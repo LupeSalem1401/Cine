@@ -558,7 +558,7 @@
     }
   }
 
-  function savePelicula(editId) {
+  async function savePelicula(editId) {
     var data = {
       titulo: qs('#p_titulo').value.trim(),
       genero: qs('#p_genero').value.trim() || null,
@@ -569,14 +569,43 @@
     if (!data.titulo) return alert('El título es obligatorio');
     var url = editId ? '/api/admin/peliculas/' + editId : '/api/admin/peliculas';
     var method = editId ? 'PUT' : 'POST';
-    fetch(url, {
+    try {
+      await adminApiWrite(url, method, data);
+    } catch (serverErr) {
+      try {
+        await dbWrite('pelicula', data, editId);
+      } catch (e) {
+        alert('Error guardando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminPeliculas();
+  }
+
+  async function adminApiWrite(path, method, data) {
+    var r = await fetch(path, {
       method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminPeliculas(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error guardando: ' + e.message); });
+    });
+    var res = null;
+    try { res = await r.json(); } catch (e) {}
+    if (!r.ok || !res || !res.success) {
+      throw new Error((res && res.error) || ('HTTP ' + r.status));
+    }
+    return true;
+  }
+
+  async function dbWrite(table, data, id) {
+    var client = ensureDb();
+    var res = id
+      ? await client.from(table).update(data).eq('id', id).select('id')
+      : await client.from(table).insert(data).select('id');
+    if (res.error) throw res.error;
+    if (!res.data || !res.data.length) {
+      throw new Error('Sin permisos para guardar en "' + table + '". Ejecuta las políticas RLS de inserción/actualización (ver README).');
+    }
+    return true;
   }
 
   async function adminApiDelete(path) {
@@ -714,7 +743,7 @@
     } catch (e) {}
   }
 
-  function saveFuncion() {
+  async function saveFuncion() {
     var data = {
       pelicula_id: parseInt(qs('#f_pelicula_id').value, 10),
       sala_id: parseInt(qs('#f_sala_id').value, 10),
@@ -722,14 +751,17 @@
       hora: qs('#f_hora').value
     };
     if (!data.pelicula_id || !data.sala_id || !data.fecha || !data.hora) return alert('Todos los campos son obligatorios');
-    fetch('/api/admin/funciones', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminFunciones(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error guardando: ' + e.message); });
+    try {
+      await adminApiWrite('/api/admin/funciones', 'POST', data);
+    } catch (serverErr) {
+      try {
+        await dbWrite('funcion', data);
+      } catch (e) {
+        alert('Error guardando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminFunciones();
   }
 
   async function deleteFuncion(id) {
@@ -816,7 +848,7 @@
     }
   }
 
-  function saveSala(editId) {
+  async function saveSala(editId) {
     var data = {
       numero: parseInt(qs('#s_numero').value, 10),
       capacidad: parseInt(qs('#s_capacidad').value, 10)
@@ -824,14 +856,17 @@
     if (!data.numero || !data.capacidad) return alert('Todos los campos son obligatorios');
     var url = editId ? '/api/admin/salas/' + editId : '/api/admin/salas';
     var method = editId ? 'PUT' : 'POST';
-    fetch(url, {
-      method: method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminSalas(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error guardando: ' + e.message); });
+    try {
+      await adminApiWrite(url, method, data);
+    } catch (serverErr) {
+      try {
+        await dbWrite('sala', data, editId);
+      } catch (e) {
+        alert('Error guardando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminSalas();
   }
 
   async function deleteSala(id) {

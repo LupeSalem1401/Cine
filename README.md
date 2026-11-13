@@ -37,15 +37,27 @@ create policy "ticket_insert"  on ticket  for insert to anon, authenticated with
 ```
 > Nota: `ticket_select` abierto es solo para demo. Para producción restringe la lectura.
 
-4. **Permisos de eliminación** para el panel de administración. Ejecuta esto **una sola vez** en el SQL Editor de Supabase y ya no necesitarás `server.cjs` ni el `cmd` para borrar:
+4. **Permisos de escritura** (agregar, editar y eliminar) para el panel de administración. Ejecuta esto **una sola vez** en el SQL Editor de Supabase y ya no necesitarás `server.cjs` ni el `cmd`:
 ```sql
+drop policy if exists "pelicula_insert" on pelicula;
+drop policy if exists "pelicula_update" on pelicula;
 drop policy if exists "pelicula_delete" on pelicula;
+drop policy if exists "sala_insert" on sala;
+drop policy if exists "sala_update" on sala;
 drop policy if exists "sala_delete" on sala;
+drop policy if exists "funcion_insert" on funcion;
+drop policy if exists "funcion_update" on funcion;
 drop policy if exists "funcion_delete" on funcion;
 drop policy if exists "ticket_delete" on ticket;
 
+create policy "pelicula_insert" on pelicula for insert to anon, authenticated with check (true);
+create policy "pelicula_update" on pelicula for update to anon, authenticated using (true) with check (true);
 create policy "pelicula_delete" on pelicula for delete to anon, authenticated using (true);
+create policy "sala_insert"     on sala     for insert to anon, authenticated with check (true);
+create policy "sala_update"     on sala     for update to anon, authenticated using (true) with check (true);
 create policy "sala_delete"     on sala     for delete to anon, authenticated using (true);
+create policy "funcion_insert"  on funcion  for insert to anon, authenticated with check (true);
+create policy "funcion_update"  on funcion  for update to anon, authenticated using (true) with check (true);
 create policy "funcion_delete"  on funcion  for delete to anon, authenticated using (true);
 create policy "ticket_delete"   on ticket   for delete to anon, authenticated using (true);
 ```
