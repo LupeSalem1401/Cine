@@ -574,30 +574,23 @@
       poster_url: qs('#p_poster_url').value.trim() || null
     };
     if (!data.titulo) return alert('El título es obligatorio');
-    try {
-      var client = ensureDb();
-      var promise = editId
-        ? client.from('pelicula').update(data).eq('id', editId)
-        : client.from('pelicula').insert(data);
-      promise.then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminPeliculas();
-      });
-    } catch (e) {
-      alert('Error guardando: ' + e.message);
-    }
+    var url = editId ? '/api/admin/peliculas/' + editId : '/api/admin/peliculas';
+    var method = editId ? 'PUT' : 'POST';
+    fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminPeliculas(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
   function deletePelicula(id) {
-    try {
-      var client = ensureDb();
-      client.from('pelicula').delete().eq('id', id).then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminPeliculas();
-      });
-    } catch (e) {
-      alert('Error eliminando: ' + e.message);
-    }
+    fetch('/api/admin/peliculas/' + id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminPeliculas(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error eliminando: ' + e.message); });
   }
 
   function renderAdminFunciones() {
@@ -689,27 +682,21 @@
       hora: qs('#f_hora').value
     };
     if (!data.pelicula_id || !data.sala_id || !data.fecha || !data.hora) return alert('Todos los campos son obligatorios');
-    try {
-      var client = ensureDb();
-      client.from('funcion').insert(data).then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminFunciones();
-      });
-    } catch (e) {
-      alert('Error guardando: ' + e.message);
-    }
+    fetch('/api/admin/funciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminFunciones(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
   function deleteFuncion(id) {
-    try {
-      var client = ensureDb();
-      client.from('funcion').delete().eq('id', id).then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminFunciones();
-      });
-    } catch (e) {
-      alert('Error eliminando: ' + e.message);
-    }
+    fetch('/api/admin/funciones/' + id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminFunciones(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error eliminando: ' + e.message); });
   }
 
   function renderAdminSalas() {
@@ -787,30 +774,23 @@
       capacidad: parseInt(qs('#s_capacidad').value, 10)
     };
     if (!data.numero || !data.capacidad) return alert('Todos los campos son obligatorios');
-    try {
-      var client = ensureDb();
-      var promise = editId
-        ? client.from('sala').update(data).eq('id', editId)
-        : client.from('sala').insert(data);
-      promise.then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminSalas();
-      });
-    } catch (e) {
-      alert('Error guardando: ' + e.message);
-    }
+    var url = editId ? '/api/admin/salas/' + editId : '/api/admin/salas';
+    var method = editId ? 'PUT' : 'POST';
+    fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminSalas(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
   function deleteSala(id) {
-    try {
-      var client = ensureDb();
-      client.from('sala').delete().eq('id', id).then(function (res) {
-        if (res.error) throw res.error;
-        renderAdminSalas();
-      });
-    } catch (e) {
-      alert('Error eliminando: ' + e.message);
-    }
+    fetch('/api/admin/salas/' + id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) renderAdminSalas(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error eliminando: ' + e.message); });
   }
 
   function renderAdminEntradas() {
@@ -854,15 +834,10 @@
   }
 
   function deleteTicket(id) {
-    try {
-      var client = ensureDb();
-      client.from('ticket').delete().eq('id', id).then(function (res) {
-        if (res.error) throw res.error;
-        loadEntradasForAdmin();
-      });
-    } catch (e) {
-      alert('Error eliminando: ' + e.message);
-    }
+    fetch('/api/admin/tickets/' + id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.success) loadEntradasForAdmin(); else alert('Error: ' + (res.error || 'Unknown')); })
+      .catch(function (e) { alert('Error eliminando: ' + e.message); });
   }
 
   function renderAdminImagenes() {
