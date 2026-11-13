@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de administración · CINEASTRA</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar--solid">
+    <div class="navbar__inner">
+      <a class="logo navbar__brand" href="index.html"><span class="logo__mark"><span></span><span></span><span></span></span><span class="logo__text">CINE<span>ASTRA</span></span></a>
+      <div class="navbar__links" id="nav-links">
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link" href="cartelera.html">Cartelera</a>
+        <a class="nav-link" href="proximos.html">Próximos estrenos</a>
+      </div>
+      <div class="navbar__user" id="navbar-user"></div>
+    </div>
+  </nav>
+
+  <main class="site-main">
+    <section class="section" style="padding-top: 80px;">
+      <div class="container">
+        <div data-config-warning></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <span class="eyebrow">ADMIN</span>
+            <h1 style="margin: 8px 0 4px;">Panel de administración</h1>
+            <p style="color: var(--muted);">Gestión de películas, funciones, salas e imágenes</p>
+          </div>
+        </div>
+
+        <div class="admin-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+          <div class="card admin-card" data-admin-section="peliculas">
+            <div class="admin-card__icon">🎬</div>
+            <h3>Películas</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Agregar, editar o eliminar películas</p>
+            <button class="btn btn--primary" id="btn-gestionar-peliculas">Gestionar</button>
+          </div>
+
+          <div class="card admin-card" data-admin-section="funciones">
+            <div class="admin-card__icon">🎟️</div>
+            <h3>Funciones y Horarios</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Crear funciones, asignar horarios y salas</p>
+            <button class="btn btn--primary" id="btn-gestionar-funciones">Gestionar</button>
+          </div>
+
+          <div class="card admin-card" data-admin-section="salas">
+            <div class="admin-card__icon">🏢</div>
+            <h3>Salas</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Configurar salas y capacidades</p>
+            <button class="btn btn--primary" id="btn-gestionar-salas">Gestionar</button>
+          </div>
+
+          <div class="card admin-card" data-admin-section="entradas">
+            <div class="admin-card__icon">🗑️</div>
+            <h3>Eliminar Entradas</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Ver y eliminar entradas vendidas</p>
+            <button class="btn btn--danger" id="btn-gestionar-entradas">Gestionar</button>
+          </div>
+
+          <div class="card admin-card" data-admin-section="imagenes">
+            <div class="admin-card__icon">🖼️</div>
+            <h3>Imágenes</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Gestionar posters y imágenes de películas</p>
+            <button class="btn btn--primary" id="btn-gestionar-imagenes">Gestionar</button>
+          </div>
+
+          <div class="card admin-card" data-admin-section="usuarios">
+            <div class="admin-card__icon">👥</div>
+            <h3>Usuarios</h3>
+            <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Ver usuarios registrados</p>
+            <button class="btn btn--primary" id="btn-gestionar-usuarios">Gestionar</button>
+          </div>
+        </div>
+
+        <div id="admin-content" style="display: none; margin-top: 24px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container" style="padding:36px 0;color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);">
+      <span>© 2026 CINEASTRA</span>
+      <span>Panel de Administración</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

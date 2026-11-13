@@ -2,6 +2,9 @@
   'use strict';
 
   var STORAGE_TICKETS = 'cineastra_ticket_ids';
+  var STORAGE_USER = 'cineastra_user';
+  var USER_EMAIL = 'salemlupe91@gmail.com';
+  var ADMIN_EMAIL = '2511130208@undc.edu.pe';
 
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
@@ -13,8 +16,126 @@
   function param(name) { return new URLSearchParams(location.search).get(name); }
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/&/g, '&').replace(/</g, '<')
+      .replace(/>/g, '>').replace(/"/g, '"');
+  }
+
+  function getCurrentUser() {
+    try {
+      var raw = localStorage.getItem(STORAGE_USER);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  }
+
+  function setCurrentUser(user) {
+    try {
+      if (user) localStorage.setItem(STORAGE_USER, JSON.stringify(user));
+      else localStorage.removeItem(STORAGE_USER);
+    } catch (e) {}
+  }
+
+  function isAdmin(user) {
+    return user && user.email === ADMIN_EMAIL;
+  }
+
+  function isRegularUser(user) {
+    return user && user.email === USER_EMAIL;
+  }
+
+  function requireAuth(redirectTo) {
+    var user = getCurrentUser();
+    if (!user) {
+      location.href = 'login.html' + (redirectTo ? '?redirect=' + encodeURIComponent(redirectTo) : '');
+      return false;
+    }
+    return user;
+  }
+
+  function requireAdmin() {
+    var user = requireAuth();
+    if (user && !isAdmin(user)) {
+      location.href = 'index.html';
+      return false;
+    }
+    return user;
+  }
+
+  function renderNavbarUser() {
+    var userEl = qs('#navbar-user');
+    if (!userEl) return;
+    var user = getCurrentUser();
+    if (!user) {
+      userEl.innerHTML = '<a class="btn btn--ghost btn--sm" href="login.html">Iniciar sesión</a>';
+      return;
+    }
+    var roleBadge = isAdmin(user) ? '<span class="badge" style="background:#ef4444;color:white;margin-left:8px;font-size:11px;">ADMIN</span>' : '';
+    var dashboardLink = isAdmin(user) ? '<a class="nav-link" href="admin.html">Panel Admin</a>' : '<a class="nav-link" href="mis-entradas.html">Mis entradas</a>';
+    userEl.innerHTML =
+      '<div class="navbar__user-menu">' +
+        '<span class="navbar__user-name" style="margin-right:12px;">' + esc(user.nombre) + roleBadge + '</span>' +
+        dashboardLink +
+        '<button class="btn btn--ghost btn--sm" id="btn-logout" style="margin-left:12px;">Salir</button>' +
+      '</div>';
+    var logoutBtn = qs('#btn-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        setCurrentUser(null);
+        location.href = 'index.html';
+      });
+    }
+  }
+
+  function handleLoginForm() {
+    var form = qs('#login-form');
+    if (!form) return;
+    var errorEl = qs('#login-error');
+    var errorMsg = qs('#error-message');
+    var btn = qs('#login-btn');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (errorEl) errorEl.style.display = 'none';
+      if (btn) { btn.disabled = true; btn.textContent = 'Ingresando...'; }
+
+      var nombre = form.nombre.value.trim();
+      var edad = parseInt(form.edad.value, 10);
+      var email = form.email.value.trim().toLowerCase();
+
+      if (!nombre || !edad || !email) {
+        if (errorMsg) errorMsg.textContent = 'Completa todos los campos';
+        if (errorEl) errorEl.style.display = 'block';
+        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+        return;
+      }
+
+      if (email !== USER_EMAIL && email !== ADMIN_EMAIL) {
+        if (errorMsg) errorMsg.textContent = 'Email no autorizado. Solo se permiten: ' + USER_EMAIL + ' o ' + ADMIN_EMAIL;
+        if (errorEl) errorEl.style.display = 'block';
+        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+        return;
+      }
+
+      var user = { nombre: nombre, edad: edad, email: email };
+      setCurrentUser(user);
+
+      var redirect = param('redirect') || (isAdmin(user) ? 'admin.html' : 'mis-entradas.html');
+      location.href = redirect;
+    });
+  }
+
+  function initAuth() {
+    renderNavbarUser();
+    handleLoginForm();
+
+    var protectedPages = ['mis-entradas.html', 'asientos.html'];
+    var currentPage = location.pathname.split('/').pop() || 'index.html';
+    if (protectedPages.includes(currentPage)) {
+      requireAuth(currentPage);
+    }
+    if (currentPage === 'admin.html') {
+      requireAdmin();
+    }
   }
 
   function showConfigWarning() {
@@ -341,12 +462,429 @@
     }
   }
 
+  function initAdmin() {
+    var content = qs('#admin-content');
+    var grid = qs('.admin-grid');
+    if (!content || !grid) return;
+
+    var user = getCurrentUser();
+    if (!isAdmin(user)) return;
+
+    var buttons = {
+      'btn-gestionar-peliculas': renderAdminPeliculas,
+      'btn-gestionar-funciones': renderAdminFunciones,
+      'btn-gestionar-salas': renderAdminSalas,
+      'btn-gestionar-entradas': renderAdminEntradas,
+      'btn-gestionar-imagenes': renderAdminImagenes,
+      'btn-gestionar-usuarios': renderAdminUsuarios
+    };
+
+    Object.keys(buttons).forEach(function (id) {
+      var btn = qs('#' + id);
+      if (btn) {
+        btn.addEventListener('click', function () {
+          content.style.display = 'block';
+          content.scrollIntoView({ behavior: 'smooth' });
+          buttons[id]();
+        });
+      }
+    });
+  }
+
+  function renderAdminPeliculas() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Películas</h2><p style="color:var(--muted);margin-bottom:16px;">Agregar, editar o eliminar películas</p><button class="btn btn--primary" id="btn-add-pelicula">+ Agregar película</button><div id="peliculas-list" style="margin-top:16px;"></div></div>';
+    loadPeliculasForAdmin();
+    var btn = qs('#btn-add-pelicula');
+    if (btn) btn.addEventListener('click', showPeliculaForm);
+  }
+
+  function loadPeliculasForAdmin() {
+    var list = qs('#peliculas-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--muted);">Cargando...</p>';
+    try {
+      var client = ensureDb();
+      client.from('pelicula').select('*').order('id', { ascending: true }).then(function (res) {
+        if (res.error) throw res.error;
+        var peliculas = res.data || [];
+        if (!peliculas.length) {
+          list.innerHTML = '<p style="color:var(--muted);">No hay películas. Agrega una nueva.</p>';
+          return;
+        }
+        list.innerHTML = peliculas.map(function (p) {
+          return '<div class="card" style="padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><strong>' + esc(p.titulo) + '</strong> <span style="color:var(--muted);margin-left:8px;">' + esc(p.genero || '') + ' · ' + (p.duracion ? p.duracion + ' min' : '') + ' · ' + esc(p.clasificacion || 'NR') + '</span></div>' +
+            '<div><button class="btn btn--ghost btn--sm" data-edit-pelicula="' + p.id + '">Editar</button> <button class="btn btn--danger btn--sm" data-delete-pelicula="' + p.id + '">Eliminar</button></div>' +
+            '</div>';
+        }).join('');
+        qsa('[data-edit-pelicula]').forEach(function (b) {
+          b.addEventListener('click', function () { showPeliculaForm(Number(b.getAttribute('data-edit-pelicula'))); });
+        });
+        qsa('[data-delete-pelicula]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (confirm('¿Eliminar esta película?')) deletePelicula(Number(b.getAttribute('data-delete-pelicula')));
+          });
+        });
+      });
+    } catch (e) {
+      list.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message || e) + '</p></div>';
+    }
+  }
+
+  function showPeliculaForm(editId) {
+    var content = qs('#admin-content');
+    if (!content) return;
+    var isEdit = !!editId;
+    var p = isEdit ? null : {};
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>' + (isEdit ? 'Editar' : 'Agregar') + ' Película</h2><form id="pelicula-form"><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="p_titulo">Título *</label><input class="form-input" type="text" id="p_titulo" name="titulo" required></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="p_genero">Género</label><input class="form-input" type="text" id="p_genero" name="genero"></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="p_duracion">Duración (min)</label><input class="form-input" type="number" id="p_duracion" name="duracion" min="1"></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="p_clasificacion">Clasificación</label><input class="form-input" type="text" id="p_clasificacion" name="clasificacion" placeholder="ATP, +13, +16, +18"></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="p_poster_url">URL Poster</label><input class="form-input" type="url" id="p_poster_url" name="poster_url" placeholder="https://..."></div><div style="display:flex;gap:12px;"><button class="btn btn--primary" type="submit">' + (isEdit ? 'Guardar cambios' : 'Crear película') + '</button><button class="btn btn--ghost" type="button" id="btn-cancel-pelicula">Cancelar</button></div></form></div>';
+    if (isEdit) loadPeliculaForEdit(editId);
+    qs('#btn-cancel-pelicula').addEventListener('click', renderAdminPeliculas);
+    qs('#pelicula-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      savePelicula(editId);
+    });
+  }
+
+  function loadPeliculaForEdit(id) {
+    try {
+      var client = ensureDb();
+      client.from('pelicula').select('*').eq('id', id).maybeSingle().then(function (res) {
+        if (res.error) throw res.error;
+        var p = res.data;
+        if (!p) return;
+        qs('#p_titulo').value = p.titulo || '';
+        qs('#p_genero').value = p.genero || '';
+        qs('#p_duracion').value = p.duracion || '';
+        qs('#p_clasificacion').value = p.clasificacion || '';
+        qs('#p_poster_url').value = p.poster_url || '';
+      });
+    } catch (e) {
+      alert('Error cargando película: ' + e.message);
+    }
+  }
+
+  function savePelicula(editId) {
+    var data = {
+      titulo: qs('#p_titulo').value.trim(),
+      genero: qs('#p_genero').value.trim() || null,
+      duracion: qs('#p_duracion').value ? parseInt(qs('#p_duracion').value, 10) : null,
+      clasificacion: qs('#p_clasificacion').value.trim() || 'ATP',
+      poster_url: qs('#p_poster_url').value.trim() || null
+    };
+    if (!data.titulo) return alert('El título es obligatorio');
+    try {
+      var client = ensureDb();
+      var promise = editId
+        ? client.from('pelicula').update(data).eq('id', editId)
+        : client.from('pelicula').insert(data);
+      promise.then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminPeliculas();
+      });
+    } catch (e) {
+      alert('Error guardando: ' + e.message);
+    }
+  }
+
+  function deletePelicula(id) {
+    try {
+      var client = ensureDb();
+      client.from('pelicula').delete().eq('id', id).then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminPeliculas();
+      });
+    } catch (e) {
+      alert('Error eliminando: ' + e.message);
+    }
+  }
+
+  function renderAdminFunciones() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Funciones y Horarios</h2><p style="color:var(--muted);margin-bottom:16px;">Crear funciones, asignar horarios y salas</p><button class="btn btn--primary" id="btn-add-funcion">+ Agregar función</button><div id="funciones-list" style="margin-top:16px;"></div></div>';
+    loadFuncionesForAdmin();
+    qs('#btn-add-funcion').addEventListener('click', showFuncionForm);
+  }
+
+  function loadFuncionesForAdmin() {
+    var list = qs('#funciones-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--muted);">Cargando...</p>';
+    try {
+      var client = ensureDb();
+      client.from('funcion').select('*, pelicula(titulo), sala(numero)').order('fecha', { ascending: false }).order('hora', { ascending: true }).then(function (res) {
+        if (res.error) throw res.error;
+        var funciones = res.data || [];
+        if (!funciones.length) {
+          list.innerHTML = '<p style="color:var(--muted);">No hay funciones. Agrega una nueva.</p>';
+          return;
+        }
+        list.innerHTML = funciones.map(function (f) {
+          var peli = f.pelicula || {};
+          var sala = f.sala || {};
+          return '<div class="card" style="padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><strong>' + esc(peli.titulo || 'Película') + '</strong> <span style="color:var(--muted);margin-left:8px;">' + esc(f.fecha) + ' · ' + String(f.hora || '').slice(0,5) + ' · Sala ' + (sala.numero || f.sala_id) + '</span></div>' +
+            '<div><button class="btn btn--danger btn--sm" data-delete-funcion="' + f.id + '">Eliminar</button></div>' +
+            '</div>';
+        }).join('');
+        qsa('[data-delete-funcion]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (confirm('¿Eliminar esta función?')) deleteFuncion(Number(b.getAttribute('data-delete-funcion')));
+          });
+        });
+      });
+    } catch (e) {
+      list.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message || e) + '</p></div>';
+    }
+  }
+
+  function showFuncionForm() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Agregar Función</h2><form id="funcion-form"><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="f_pelicula_id">Película *</label><select class="form-input" id="f_pelicula_id" name="pelicula_id" required></select></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="f_sala_id">Sala *</label><select class="form-input" id="f_sala_id" name="sala_id" required></select></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="f_fecha">Fecha *</label><input class="form-input" type="date" id="f_fecha" name="fecha" required></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="f_hora">Hora *</label><input class="form-input" type="time" id="f_hora" name="hora" required></div><div style="display:flex;gap:12px;"><button class="btn btn--primary" type="submit">Crear función</button><button class="btn btn--ghost" type="button" id="btn-cancel-funcion">Cancelar</button></div></form></div>';
+    loadPeliculasForSelect();
+    loadSalasForSelect();
+    qs('#btn-cancel-funcion').addEventListener('click', renderAdminFunciones);
+    qs('#funcion-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      saveFuncion();
+    });
+  }
+
+  function loadPeliculasForSelect() {
+    try {
+      var client = ensureDb();
+      client.from('pelicula').select('id,titulo').order('titulo', { ascending: true }).then(function (res) {
+        if (res.error) throw res.error;
+        var sel = qs('#f_pelicula_id');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Seleccionar película</option>' + (res.data || []).map(function (p) {
+          return '<option value="' + p.id + '">' + esc(p.titulo) + '</option>';
+        }).join('');
+      });
+    } catch (e) {}
+  }
+
+  function loadSalasForSelect() {
+    try {
+      var client = ensureDb();
+      client.from('sala').select('id,numero').order('numero', { ascending: true }).then(function (res) {
+        if (res.error) throw res.error;
+        var sel = qs('#f_sala_id');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Seleccionar sala</option>' + (res.data || []).map(function (s) {
+          return '<option value="' + s.id + '">Sala ' + s.numero + ' (Cap: ' + (s.capacidad || '?') + ')</option>';
+        }).join('');
+      });
+    } catch (e) {}
+  }
+
+  function saveFuncion() {
+    var data = {
+      pelicula_id: parseInt(qs('#f_pelicula_id').value, 10),
+      sala_id: parseInt(qs('#f_sala_id').value, 10),
+      fecha: qs('#f_fecha').value,
+      hora: qs('#f_hora').value
+    };
+    if (!data.pelicula_id || !data.sala_id || !data.fecha || !data.hora) return alert('Todos los campos son obligatorios');
+    try {
+      var client = ensureDb();
+      client.from('funcion').insert(data).then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminFunciones();
+      });
+    } catch (e) {
+      alert('Error guardando: ' + e.message);
+    }
+  }
+
+  function deleteFuncion(id) {
+    try {
+      var client = ensureDb();
+      client.from('funcion').delete().eq('id', id).then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminFunciones();
+      });
+    } catch (e) {
+      alert('Error eliminando: ' + e.message);
+    }
+  }
+
+  function renderAdminSalas() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Salas</h2><p style="color:var(--muted);margin-bottom:16px;">Configurar salas y capacidades</p><button class="btn btn--primary" id="btn-add-sala">+ Agregar sala</button><div id="salas-list" style="margin-top:16px;"></div></div>';
+    loadSalasForAdmin();
+    qs('#btn-add-sala').addEventListener('click', showSalaForm);
+  }
+
+  function loadSalasForAdmin() {
+    var list = qs('#salas-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--muted);">Cargando...</p>';
+    try {
+      var client = ensureDb();
+      client.from('sala').select('*').order('numero', { ascending: true }).then(function (res) {
+        if (res.error) throw res.error;
+        var salas = res.data || [];
+        if (!salas.length) {
+          list.innerHTML = '<p style="color:var(--muted);">No hay salas. Agrega una nueva.</p>';
+          return;
+        }
+        list.innerHTML = salas.map(function (s) {
+          return '<div class="card" style="padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><strong>Sala ' + s.numero + '</strong> <span style="color:var(--muted);margin-left:8px;">Capacidad: ' + (s.capacidad || '?') + '</span></div>' +
+            '<div><button class="btn btn--ghost btn--sm" data-edit-sala="' + s.id + '">Editar</button> <button class="btn btn--danger btn--sm" data-delete-sala="' + s.id + '">Eliminar</button></div>' +
+            '</div>';
+        }).join('');
+        qsa('[data-edit-sala]').forEach(function (b) {
+          b.addEventListener('click', function () { showSalaForm(Number(b.getAttribute('data-edit-sala'))); });
+        });
+        qsa('[data-delete-sala]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (confirm('¿Eliminar esta sala?')) deleteSala(Number(b.getAttribute('data-delete-sala')));
+          });
+        });
+      });
+    } catch (e) {
+      list.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message || e) + '</p></div>';
+    }
+  }
+
+  function showSalaForm(editId) {
+    var content = qs('#admin-content');
+    if (!content) return;
+    var isEdit = !!editId;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>' + (isEdit ? 'Editar' : 'Agregar') + ' Sala</h2><form id="sala-form"><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="s_numero">Número de sala *</label><input class="form-input" type="number" id="s_numero" name="numero" required min="1"></div><div class="form-group" style="margin-bottom:16px;"><label class="form-label" for="s_capacidad">Capacidad *</label><input class="form-input" type="number" id="s_capacidad" name="capacidad" required min="1"></div><div style="display:flex;gap:12px;"><button class="btn btn--primary" type="submit">' + (isEdit ? 'Guardar cambios' : 'Crear sala') + '</button><button class="btn btn--ghost" type="button" id="btn-cancel-sala">Cancelar</button></div></form></div>';
+    if (isEdit) loadSalaForEdit(editId);
+    qs('#btn-cancel-sala').addEventListener('click', renderAdminSalas);
+    qs('#sala-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      saveSala(editId);
+    });
+  }
+
+  function loadSalaForEdit(id) {
+    try {
+      var client = ensureDb();
+      client.from('sala').select('*').eq('id', id).maybeSingle().then(function (res) {
+        if (res.error) throw res.error;
+        var s = res.data;
+        if (!s) return;
+        qs('#s_numero').value = s.numero || '';
+        qs('#s_capacidad').value = s.capacidad || '';
+      });
+    } catch (e) {
+      alert('Error cargando sala: ' + e.message);
+    }
+  }
+
+  function saveSala(editId) {
+    var data = {
+      numero: parseInt(qs('#s_numero').value, 10),
+      capacidad: parseInt(qs('#s_capacidad').value, 10)
+    };
+    if (!data.numero || !data.capacidad) return alert('Todos los campos son obligatorios');
+    try {
+      var client = ensureDb();
+      var promise = editId
+        ? client.from('sala').update(data).eq('id', editId)
+        : client.from('sala').insert(data);
+      promise.then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminSalas();
+      });
+    } catch (e) {
+      alert('Error guardando: ' + e.message);
+    }
+  }
+
+  function deleteSala(id) {
+    try {
+      var client = ensureDb();
+      client.from('sala').delete().eq('id', id).then(function (res) {
+        if (res.error) throw res.error;
+        renderAdminSalas();
+      });
+    } catch (e) {
+      alert('Error eliminando: ' + e.message);
+    }
+  }
+
+  function renderAdminEntradas() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Eliminar Entradas</h2><p style="color:var(--muted);margin-bottom:16px;">Ver y eliminar entradas vendidas</p><div id="entradas-list" style="margin-top:16px;"></div></div>';
+    loadEntradasForAdmin();
+  }
+
+  function loadEntradasForAdmin() {
+    var list = qs('#entradas-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--muted);">Cargando...</p>';
+    try {
+      var client = ensureDb();
+      client.from('ticket').select('*, funcion(*, pelicula(titulo), sala(numero))').order('fecha_venta', { ascending: false }).then(function (res) {
+        if (res.error) throw res.error;
+        var tickets = res.data || [];
+        if (!tickets.length) {
+          list.innerHTML = '<p style="color:var(--muted);">No hay entradas registradas.</p>';
+          return;
+        }
+        list.innerHTML = tickets.map(function (t) {
+          var fn = t.funcion || {};
+          var peli = fn.pelicula || {};
+          var sala = fn.sala || {};
+          return '<div class="card" style="padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><strong>Ticket #' + t.id + '</strong> <span style="color:var(--muted);margin-left:8px;">' + esc(peli.titulo || 'Película') + ' · Asiento ' + esc(t.asiento) + ' · ' + esc(fn.fecha || '') + ' ' + String(fn.hora || '').slice(0,5) + ' · Sala ' + (sala.numero || fn.sala_id) + '</span></div>' +
+            '<div><button class="btn btn--danger btn--sm" data-delete-ticket="' + t.id + '">Eliminar</button></div>' +
+            '</div>';
+        }).join('');
+        qsa('[data-delete-ticket]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (confirm('¿Eliminar esta entrada?')) deleteTicket(Number(b.getAttribute('data-delete-ticket')));
+          });
+        });
+      });
+    } catch (e) {
+      list.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message || e) + '</p></div>';
+    }
+  }
+
+  function deleteTicket(id) {
+    try {
+      var client = ensureDb();
+      client.from('ticket').delete().eq('id', id).then(function (res) {
+        if (res.error) throw res.error;
+        loadEntradasForAdmin();
+      });
+    } catch (e) {
+      alert('Error eliminando: ' + e.message);
+    }
+  }
+
+  function renderAdminImagenes() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Imágenes (Posters)</h2><p style="color:var(--muted);margin-bottom:16px;">Los posters se guardan en el campo <code>poster_url</code> de cada película.</p><p style="color:var(--muted);">Usa la sección <strong>Gestionar Películas</strong> para agregar o cambiar la URL del poster de cada película.</p></div>';
+  }
+
+  function renderAdminUsuarios() {
+    var content = qs('#admin-content');
+    if (!content) return;
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Usuarios del sistema</h2><p style="color:var(--muted);margin-bottom:16px;">Usuarios autorizados para acceder al sistema:</p><ul style="list-style:none;padding:0;"><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>salemlupe91@gmail.com</span><span class="badge" style="background:#3b82f6;color:white;">Usuario</span></li><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>2511130208@undc.edu.pe</span><span class="badge" style="background:#ef4444;color:white;">Admin</span></li></ul><p style="color:var(--muted);margin-top:16px;font-size:14px;">La autenticación se maneja por email. Para agregar más usuarios, modifica las constantes USER_EMAIL y ADMIN_EMAIL en assets/app.js</p></div>';
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    initAuth();
     showConfigWarning();
     renderProximos();
     renderCarteleraGrids();
     renderPelicula();
     renderAsientos();
     renderEntradas();
+    initAdmin();
   });
 })();
