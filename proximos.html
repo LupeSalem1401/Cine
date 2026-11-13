@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Próximos estrenos · CINEASTRA</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar--solid">
+    <div class="navbar__inner">
+      <a class="logo navbar__brand" href="index.html"><span class="logo__mark"><span></span><span></span><span></span></span><span class="logo__text">CINE<span>ASTRA</span></span></a>
+      <div class="navbar__links">
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link" href="cartelera.html">Cartelera</a>
+        <a class="nav-link is-active" href="proximos.html">Próximos estrenos</a>
+        <a class="nav-link" href="mis-entradas.html">Mis entradas</a>
+      </div>
+    </div>
+  </nav>
+  <main class="page">
+    <header class="page-hero page-hero--proximos"><div class="page-hero__noise"></div><div class="container page-hero__inner">
+      <span class="eyebrow">Muy pronto</span><h1>Próximos estrenos</h1><p>En este esquema no hay estado de estreno; esta sección puede quedar vacía.</p>
+    </div></header>
+    <section class="section section--top"><div class="container">
+      <div data-config-warning></div>
+      <div class="movie-grid" data-proximos-grid></div>
+    </div></section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CINEASTRA · Entradas de cine</title>
+  <meta name="description" content="CINEASTRA — Compra tus entradas de cine en línea.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar--solid">
+    <div class="navbar__inner">
+      <a class="logo navbar__brand" href="index.html"><span class="logo__mark"><span></span><span></span><span></span></span><span class="logo__text">CINE<span>ASTRA</span></span></a>
+      <div class="navbar__links">
+        <a class="nav-link is-active" href="index.html">Inicio</a>
+        <a class="nav-link" href="cartelera.html">Cartelera</a>
+        <a class="nav-link" href="proximos.html">Próximos estrenos</a>
+        <a class="nav-link" href="mis-entradas.html">Mis entradas</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="site-main">
+    <section class="hero" style="min-height:78vh;display:flex;align-items:center;padding-top:120px;background:linear-gradient(90deg,rgba(8,8,11,.97),rgba(8,8,11,.75)),#08080b;">
+      <div class="container">
+        <span class="eyebrow">CINEASTRA</span>
+        <h1 style="font-family:var(--font-display);font-size:clamp(3rem,7vw,6rem);line-height:.95;letter-spacing:.02em;margin:8px 0 14px;">LA PANTALLA GRANDE,<br>EN TUS MANOS.</h1>
+        <p style="max-width:620px;color:var(--muted);font-size:16px;margin-bottom:22px;">Elegí tu película, seleccioná tu butaca y registrá tu entrada. Conectado a tu base de datos Supabase.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <a class="btn btn--primary btn--lg" href="cartelera.html">Ver cartelera</a>
+          <a class="btn btn--ghost btn--lg" href="mis-entradas.html">Mis entradas</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Cartelera</span>
+            <h2>Películas disponibles</h2>
+            <p>Datos cargados desde tu base de datos.</p>
+          </div>
+          <a class="btn btn--ghost" href="cartelera.html">Ver toda la cartelera</a>
+        </div>
+        <div data-config-warning></div>
+        <div class="movie-grid" data-home-grid></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container" style="padding:36px 0;color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);">
+      <span>© 2026 CINEASTRA</span>
+      <span>HTML + CSS + JS + Supabase</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

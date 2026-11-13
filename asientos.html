@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seleccionar asientos · CINEASTRA</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar--solid">
+    <div class="navbar__inner">
+      <a class="logo navbar__brand" href="index.html"><span class="logo__mark"><span></span><span></span><span></span></span><span class="logo__text">CINE<span>ASTRA</span></span></a>
+      <div class="navbar__links">
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link is-active" href="cartelera.html">Cartelera</a>
+        <a class="nav-link" href="proximos.html">Próximos estrenos</a>
+        <a class="nav-link" href="mis-entradas.html">Mis entradas</a>
+      </div>
+    </div>
+  </nav>
+  <main class="page booking-page" data-asientos>
+    <div class="container booking-header" style="padding-top:24px">
+      <div data-config-warning></div>
+      <div class="booking-title"><div>
+        <span class="eyebrow">Paso 2 de 3</span>
+        <h1 data-fn-title>Elegí tus asientos</h1>
+        <p data-fn-info>Cargando función…</p>
+      </div><a href="cartelera.html" class="btn btn--ghost btn--sm">← Volver</a></div>
+      <div class="steps" aria-label="Pasos de compra"><span class="step is-done"><i>✓</i> Función</span><span class="step is-active"><i>2</i> Asientos</span><span class="step"><i>3</i> Confirmar</span></div>
+    </div>
+    <div class="container booking-layout">
+      <section class="seat-panel">
+        <div class="seat-panel__head"><div><h2>Seleccioná tus butacas</h2><p>Máximo 10 asientos por compra. Los ocupados se leen desde la base de datos.</p></div><span class="seat-panel__count" data-count>0 / 10 seleccionados</span></div>
+        <div class="seat-map" data-seat-map><p style="color:#a1a1b0;padding:24px">Cargando mapa de asientos…</p></div>
+        <p data-seat-error style="color:#ff8a93;margin-top:12px"></p>
+      </section>
+      <aside class="booking-summary"><div class="summary-card">
+        <h3 style="margin-bottom:8px">Resumen</h3>
+        <div class="summary-card__details">
+          <div><span>Precio por entrada</span><strong data-fn-price>$0.00</strong></div>
+          <div><span>Asientos</span><strong data-selected>Ninguno</strong></div>
+        </div>
+        <div class="summary-card__totals"><div class="summary-card__total"><span>Total</span><strong data-total>$0.00</strong></div></div>
+        <button type="button" class="btn btn--primary btn--block" data-confirm disabled>Confirmar compra</button>
+        <p class="summary-card__secure">La compra se registra en la tabla <code>ticket</code> (Supabase).</p>
+      </div></aside>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
