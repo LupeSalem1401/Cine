@@ -3,7 +3,6 @@
 
   var STORAGE_TICKETS = 'cineastra_ticket_ids';
   var STORAGE_USER = 'cineastra_user';
-  var USER_EMAIL = 'salemlupe91@gmail.com';
   var ADMIN_EMAIL = '2511130208@undc.edu.pe';
 
   function qs(sel, root) { return (root || document).querySelector(sel); }
@@ -36,11 +35,11 @@
   }
 
   function isAdmin(user) {
-    return user && user.email === ADMIN_EMAIL;
+    return !!user && (user.role === 'admin' || user.email === ADMIN_EMAIL);
   }
 
   function isRegularUser(user) {
-    return user && user.email === USER_EMAIL;
+    return !!user && !isAdmin(user);
   }
 
   function requireAuth(redirectTo) {
@@ -109,14 +108,8 @@
         return;
       }
 
-      if (email !== USER_EMAIL && email !== ADMIN_EMAIL) {
-        if (errorMsg) errorMsg.textContent = 'Email no autorizado. Solo se permiten: ' + USER_EMAIL + ' o ' + ADMIN_EMAIL;
-        if (errorEl) errorEl.style.display = 'block';
-        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
-        return;
-      }
-
-      var user = { nombre: nombre, edad: edad, email: email };
+      var role = email === ADMIN_EMAIL ? 'admin' : 'user';
+      var user = { nombre: nombre, edad: edad, email: email, role: role };
       setCurrentUser(user);
 
       var redirect = param('redirect') || (isAdmin(user) ? 'admin.html' : 'mis-entradas.html');
@@ -586,11 +579,58 @@
       .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
-  function deletePelicula(id) {
-    fetch('/api/admin/peliculas/' + id, { method: 'DELETE' })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminPeliculas(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error eliminando: ' + e.message); });
+  async function adminApiDelete(path) {
+    var r = await fetch(path, { method: 'DELETE' });
+    var res = null;
+    try { res = await r.json(); } catch (e) {}
+    if (!r.ok || !res || !res.success) {
+      throw new Error((res && res.error) || ('HTTP ' + r.status));
+    }
+    return true;
+  }
+
+  async function dbDelete(table, id) {
+    var client = ensureDb();
+    var res = await client.from(table).delete().eq('id', id).select('id');
+    if (res.error) throw res.error;
+    if (!res.data || !res.data.length) {
+      throw new Error('Sin permisos para eliminar en "' + table + '". Ejecuta las políticas RLS de eliminación (ver README).');
+    }
+    return true;
+  }
+
+  async function deleteTicketsForFunciones(ids) {
+    if (!ids || !ids.length) return;
+    var client = ensureDb();
+    var res = await client.from('ticket').delete().in('funcion_id', ids);
+    if (res.error) throw res.error;
+  }
+
+  async function deleteFuncionesBy(column, value) {
+    var client = ensureDb();
+    var fRes = await client.from('funcion').select('id').eq(column, value);
+    if (fRes.error) throw fRes.error;
+    var ids = (fRes.data || []).map(function (f) { return f.id; });
+    await deleteTicketsForFunciones(ids);
+    if (ids.length) {
+      var dRes = await client.from('funcion').delete().in('id', ids);
+      if (dRes.error) throw dRes.error;
+    }
+  }
+
+  async function deletePelicula(id) {
+    try {
+      await adminApiDelete('/api/admin/peliculas/' + id);
+    } catch (serverErr) {
+      try {
+        await deleteFuncionesBy('pelicula_id', id);
+        await dbDelete('pelicula', id);
+      } catch (e) {
+        alert('Error eliminando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminPeliculas();
   }
 
   function renderAdminFunciones() {
@@ -692,11 +732,19 @@
       .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
-  function deleteFuncion(id) {
-    fetch('/api/admin/funciones/' + id, { method: 'DELETE' })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminFunciones(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error eliminando: ' + e.message); });
+  async function deleteFuncion(id) {
+    try {
+      await adminApiDelete('/api/admin/funciones/' + id);
+    } catch (serverErr) {
+      try {
+        await deleteTicketsForFunciones([id]);
+        await dbDelete('funcion', id);
+      } catch (e) {
+        alert('Error eliminando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminFunciones();
   }
 
   function renderAdminSalas() {
@@ -786,11 +834,19 @@
       .catch(function (e) { alert('Error guardando: ' + e.message); });
   }
 
-  function deleteSala(id) {
-    fetch('/api/admin/salas/' + id, { method: 'DELETE' })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) renderAdminSalas(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error eliminando: ' + e.message); });
+  async function deleteSala(id) {
+    try {
+      await adminApiDelete('/api/admin/salas/' + id);
+    } catch (serverErr) {
+      try {
+        await deleteFuncionesBy('sala_id', id);
+        await dbDelete('sala', id);
+      } catch (e) {
+        alert('Error eliminando: ' + (e.message || e));
+        return;
+      }
+    }
+    renderAdminSalas();
   }
 
   function renderAdminEntradas() {
@@ -833,11 +889,18 @@
     }
   }
 
-  function deleteTicket(id) {
-    fetch('/api/admin/tickets/' + id, { method: 'DELETE' })
-      .then(function (r) { return r.json(); })
-      .then(function (res) { if (res.success) loadEntradasForAdmin(); else alert('Error: ' + (res.error || 'Unknown')); })
-      .catch(function (e) { alert('Error eliminando: ' + e.message); });
+  async function deleteTicket(id) {
+    try {
+      await adminApiDelete('/api/admin/tickets/' + id);
+    } catch (serverErr) {
+      try {
+        await dbDelete('ticket', id);
+      } catch (e) {
+        alert('Error eliminando: ' + (e.message || e));
+        return;
+      }
+    }
+    loadEntradasForAdmin();
   }
 
   function renderAdminImagenes() {
@@ -849,7 +912,7 @@
   function renderAdminUsuarios() {
     var content = qs('#admin-content');
     if (!content) return;
-    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Usuarios del sistema</h2><p style="color:var(--muted);margin-bottom:16px;">Usuarios autorizados para acceder al sistema:</p><ul style="list-style:none;padding:0;"><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>salemlupe91@gmail.com</span><span class="badge" style="background:#3b82f6;color:white;">Usuario</span></li><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>2511130208@undc.edu.pe</span><span class="badge" style="background:#ef4444;color:white;">Admin</span></li></ul><p style="color:var(--muted);margin-top:16px;font-size:14px;">La autenticación se maneja por email. Para agregar más usuarios, modifica las constantes USER_EMAIL y ADMIN_EMAIL en assets/app.js</p></div>';
+    content.innerHTML = '<div class="card" style="padding:24px;"><h2>Usuarios del sistema</h2><p style="color:var(--muted);margin-bottom:16px;">Cualquier persona que inicie sesión obtiene el rol <strong>Usuario</strong>. Solo el email administrador obtiene el rol <strong>Admin</strong>.</p><ul style="list-style:none;padding:0;"><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>Cualquier email registrado</span><span class="badge" style="background:#3b82f6;color:white;">Usuario</span></li><li style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;"><span>' + esc(ADMIN_EMAIL) + '</span><span class="badge" style="background:#ef4444;color:white;">Admin</span></li></ul><p style="color:var(--muted);margin-top:16px;font-size:14px;">Para cambiar el administrador, modifica la constante ADMIN_EMAIL en assets/app.js</p></div>';
   }
 
   document.addEventListener('DOMContentLoaded', function () {

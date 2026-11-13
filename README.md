@@ -23,6 +23,12 @@ alter table sala enable row level security;
 alter table funcion enable row level security;
 alter table ticket enable row level security;
 
+drop policy if exists "pelicula_select" on pelicula;
+drop policy if exists "sala_select" on sala;
+drop policy if exists "funcion_select" on funcion;
+drop policy if exists "ticket_select" on ticket;
+drop policy if exists "ticket_insert" on ticket;
+
 create policy "pelicula_select" on pelicula for select to anon, authenticated using (true);
 create policy "sala_select"    on sala    for select to anon, authenticated using (true);
 create policy "funcion_select" on funcion for select to anon, authenticated using (true);
@@ -30,6 +36,20 @@ create policy "ticket_select"  on ticket  for select to anon, authenticated usin
 create policy "ticket_insert"  on ticket  for insert to anon, authenticated with check (true);
 ```
 > Nota: `ticket_select` abierto es solo para demo. Para producción restringe la lectura.
+
+4. **Permisos de eliminación** para el panel de administración. Ejecuta esto **una sola vez** en el SQL Editor de Supabase y ya no necesitarás `server.cjs` ni el `cmd` para borrar:
+```sql
+drop policy if exists "pelicula_delete" on pelicula;
+drop policy if exists "sala_delete" on sala;
+drop policy if exists "funcion_delete" on funcion;
+drop policy if exists "ticket_delete" on ticket;
+
+create policy "pelicula_delete" on pelicula for delete to anon, authenticated using (true);
+create policy "sala_delete"     on sala     for delete to anon, authenticated using (true);
+create policy "funcion_delete"  on funcion  for delete to anon, authenticated using (true);
+create policy "ticket_delete"   on ticket   for delete to anon, authenticated using (true);
+```
+El panel elimina primero las entradas y funciones dependientes para evitar errores de claves foráneas. Si usas `server.cjs` con `SUPABASE_SERVICE_KEY`, estos permisos no son necesarios porque la service key omite RLS.
 
 ## 2) Configurar el frontend
 Edita `assets/config.js`:
@@ -41,8 +61,15 @@ Edita `assets/config.js`:
 
 ## 3) Ejecutar
 Abre la carpeta con un servidor local (no `file://`):
-- `npx serve simple`  (o `npx serve .` dentro de `simple/`)
+- `node server.cjs` (o `start-server.cmd`) → `http://localhost:3000`
+- `npx serve .`
 - o extensión **Live Server** de VS Code
+
+Para que el panel de administración pueda eliminar sin depender de las políticas RLS, pega tu service key en el archivo `.env` (ya está en `.gitignore`):
+```
+SUPABASE_SERVICE_KEY=tu_service_role_key
+```
+También puedes pasarla por variable de entorno o escribirla cuando `start-server.cmd` la solicite. La service key solo se usa en el servidor; nunca la pongas en el navegador ni la subas al repositorio.
 
 Luego abre `index.html`.
 

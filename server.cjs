@@ -1,18 +1,33 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const url = require('url');
+
 const { createClient } = require('@supabase/supabase-js');
 
 const root = __dirname;
 const port = Number(process.env.PORT) || 3000;
 
+const envPath = path.join(root, '.env');
+if (fs.existsSync(envPath)) {
+  fs.readFileSync(envPath, 'utf8').split(/\r?\n/).forEach(line => {
+    const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (!m || line.trim().startsWith('#')) return;
+    let value = m[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (!process.env[m[1]]) process.env[m[1]] = value;
+  });
+}
+
 const SUPABASE_URL = 'https://thjanybdqvoeakbwofqy.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+const adminClient = SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+  : null;
 
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -27,8 +42,16 @@ const types = {
   '.webp': 'image/webp',
 };
 
+function getPathname(reqUrl) {
+  try {
+    return new URL(reqUrl, 'http://localhost').pathname;
+  } catch (e) {
+    return '/';
+  }
+}
+
 function safePath(reqUrl) {
-  const pathname = decodeURIComponent(url.parse(reqUrl).pathname || '/');
+  const pathname = decodeURIComponent(getPathname(reqUrl) || '/');
   const rel = pathname === '/' ? '/index.html' : pathname;
   const resolved = path.normalize(path.join(root, rel));
   if (!resolved.startsWith(root)) return null;
@@ -50,7 +73,7 @@ function parseBody(req) {
 }
 
 async function handleAdminApi(req, res) {
-  const pathname = url.parse(req.url).pathname;
+  const pathname = getPathname(req.url);
   const method = req.method;
 
   // CORS headers
@@ -62,6 +85,40 @@ async function handleAdminApi(req, res) {
     res.writeHead(204);
     res.end();
     return true;
+  }
+
+  if (pathname === '/api/admin/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, enabled: !!adminClient }));
+    return true;
+  }
+
+  if (!pathname.startsWith('/api/admin/')) return false;
+
+  if (!adminClient) {
+    res.writeHead(501, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'Falta SUPABASE_SERVICE_KEY. Inicia el servidor con esa variable de entorno o ejecuta las políticas RLS de eliminación (ver README).'
+    }));
+    return true;
+  }
+
+  async function deleteTicketsBy(column, value) {
+    const { error } = await adminClient.from('ticket').delete().eq(column, value);
+    if (error) throw error;
+  }
+
+  async function deleteFuncionesBy(column, value) {
+    const { data, error } = await adminClient.from('funcion').select('id').eq(column, value);
+    if (error) throw error;
+    const ids = (data || []).map(f => f.id);
+    for (const id of ids) {
+      await deleteTicketsBy('funcion_id', id);
+    }
+    if (ids.length) {
+      const del = await adminClient.from('funcion').delete().in('id', ids);
+      if (del.error) throw del.error;
+    }
   }
 
   try {
@@ -78,6 +135,7 @@ async function handleAdminApi(req, res) {
     // DELETE /api/admin/funciones/:id
     if (pathname.startsWith('/api/admin/funciones/') && method === 'DELETE') {
       const id = pathname.split('/').pop();
+      await deleteTicketsBy('funcion_id', id);
       const { error } = await adminClient.from('funcion').delete().eq('id', id);
       if (error) throw error;
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -88,6 +146,7 @@ async function handleAdminApi(req, res) {
     // DELETE /api/admin/peliculas/:id
     if (pathname.startsWith('/api/admin/peliculas/') && method === 'DELETE') {
       const id = pathname.split('/').pop();
+      await deleteFuncionesBy('pelicula_id', id);
       const { error } = await adminClient.from('pelicula').delete().eq('id', id);
       if (error) throw error;
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -98,6 +157,7 @@ async function handleAdminApi(req, res) {
     // DELETE /api/admin/salas/:id
     if (pathname.startsWith('/api/admin/salas/') && method === 'DELETE') {
       const id = pathname.split('/').pop();
+      await deleteFuncionesBy('sala_id', id);
       const { error } = await adminClient.from('sala').delete().eq('id', id);
       if (error) throw error;
       res.writeHead(200, { 'Content-Type': 'application/json' });
