@@ -63,6 +63,12 @@ create policy "ticket_delete"   on ticket   for delete to anon, authenticated us
 ```
 El panel elimina primero las entradas y funciones dependientes para evitar errores de claves foráneas. Si usas `server.cjs` con `SUPABASE_SERVICE_KEY`, estos permisos no son necesarios porque la service key omite RLS.
 
+5. Para usar el campo **URL Poster** del panel, agrega la columna:
+```sql
+alter table pelicula add column if not exists poster_url text;
+```
+Si la columna no existe y guardas una película, Supabase devuelve `column pelicula.poster_url does not exist`.
+
 ## 2) Configurar el frontend
 Edita `assets/config.js`:
 - `SUPABASE_URL` → Project Settings → API → Project URL

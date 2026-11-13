@@ -182,7 +182,8 @@
     'deadpool & wolverine': 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg'
   };
 
-  function getPoster(titulo) {
+  function getPoster(titulo, posterUrl) {
+    if (posterUrl && /^https?:\/\//i.test(String(posterUrl))) return String(posterUrl);
     var key = String(titulo || '').trim().toLowerCase();
     if (POSTERS[key]) return POSTERS[key];
     for (var k in POSTERS) {
@@ -191,8 +192,8 @@
     return '';
   }
 
-  function posterMedia(titulo, large) {
-    var url = getPoster(titulo);
+  function posterMedia(titulo, large, posterUrl) {
+    var url = getPoster(titulo, posterUrl);
     if (url) {
       return '<img src="' + esc(url) + '" alt="' + esc(titulo || 'Película') + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">';
     }
@@ -203,8 +204,8 @@
 
   function cardHtml(m) {
     return '<a class="movie-card" href="pelicula.html?id=' + m.id + '">' +
-      '<div class="movie-card__media">' + posterMedia(m.titulo) +
-      '<div class="movie-card__shade ' + (getPoster(m.titulo) ? '' : 'movie-card__shade--soft') + '"></div>' +
+      '<div class="movie-card__media">' + posterMedia(m.titulo, false, m.poster_url) +
+      '<div class="movie-card__shade ' + (getPoster(m.titulo, m.poster_url) ? '' : 'movie-card__shade--soft') + '"></div>' +
       '<span class="badge badge--rating">' + esc(m.clasificacion || 'NR') + '</span>' +
       '<div class="movie-card__hover"><span class="movie-card__hover-icon">▶</span>Ver funciones</div></div>' +
       '<div class="movie-card__body"><div class="movie-card__title-row"><h3>' + esc(m.titulo || 'Película') + '</h3><span>↗</span></div>' +
@@ -255,7 +256,7 @@
       var syn = qs('[data-synopsis]', root); if (syn) syn.textContent = 'Sin sinopsis (tu tabla pelicula no tiene este campo).';
       var posterBox = qs('[data-poster-box]', root);
       if (posterBox) {
-        var pUrl = getPoster(m.titulo);
+        var pUrl = getPoster(m.titulo, m.poster_url);
         if (pUrl) {
           posterBox.innerHTML = '<img src="' + esc(pUrl) + '" alt="' + esc(m.titulo || 'Película') + '" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:16px">';
           posterBox.style.background = 'transparent';
@@ -490,7 +491,7 @@
     content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Películas</h2><p style="color:var(--muted);margin-bottom:16px;">Agregar, editar o eliminar películas</p><button class="btn btn--primary" id="btn-add-pelicula">+ Agregar película</button><div id="peliculas-list" style="margin-top:16px;"></div></div>';
     loadPeliculasForAdmin();
     var btn = qs('#btn-add-pelicula');
-    if (btn) btn.addEventListener('click', showPeliculaForm);
+    if (btn) btn.addEventListener('click', function () { showPeliculaForm(); });
   }
 
   function loadPeliculasForAdmin() {
@@ -575,8 +576,21 @@
       try {
         await dbWrite('pelicula', data, editId);
       } catch (e) {
-        alert('Error guardando: ' + (e.message || e));
-        return;
+        var msg = (e && e.message) || String(e);
+        if (/poster_url/i.test(msg) && /does not exist/i.test(msg)) {
+          var sinPoster = Object.assign({}, data);
+          delete sinPoster.poster_url;
+          try {
+            await dbWrite('pelicula', sinPoster, editId);
+          } catch (e2) {
+            alert('Error guardando: ' + ((e2 && e2.message) || e2));
+            return;
+          }
+          alert('Película guardada, pero el poster no se guardó porque falta la columna poster_url.\n\nEjecuta en Supabase SQL Editor:\nalter table pelicula add column if not exists poster_url text;');
+        } else {
+          alert('Error guardando: ' + msg);
+          return;
+        }
       }
     }
     renderAdminPeliculas();
@@ -784,7 +798,7 @@
     if (!content) return;
     content.innerHTML = '<div class="card" style="padding:24px;"><h2>Gestionar Salas</h2><p style="color:var(--muted);margin-bottom:16px;">Configurar salas y capacidades</p><button class="btn btn--primary" id="btn-add-sala">+ Agregar sala</button><div id="salas-list" style="margin-top:16px;"></div></div>';
     loadSalasForAdmin();
-    qs('#btn-add-sala').addEventListener('click', showSalaForm);
+    qs('#btn-add-sala').addEventListener('click', function () { showSalaForm(); });
   }
 
   function loadSalasForAdmin() {
